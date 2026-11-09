@@ -32,6 +32,8 @@ header{position:sticky;top:0;z-index:20;background:rgba(246,249,243,.92);
 .net{font-size:12px;color:var(--dim);padding:3px 10px;border:1px solid var(--line);
   border-radius:999px;background:var(--surface);white-space:nowrap}
 .net.ok{color:var(--green-d);border-color:#c2e2c3;background:#ecf6e9}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#8ee29a;
+  margin-right:7px;vertical-align:1px;box-shadow:0 0 0 3px rgba(142,226,154,.25)}
 .spacer{flex:1}
 
 /* ===== 按钮 ===== */
@@ -85,11 +87,13 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .pet{background:var(--surface2);border-radius:14px;text-align:center;padding:12px 6px 10px;
   position:relative;transition:.15s}
 .pet:hover{background:#eaf3e6;transform:translateY(-2px)}
-.pet .mob{border:none;background:none;padding:6px;display:block;margin:auto;cursor:pointer;border-radius:10px}
-.pet .mob:active{transform:scale(.9)}
-.pet canvas{image-rendering:pixelated;width:60px;height:60px;display:block}
-.pet .nm{font-size:12.5px;margin-top:2px;font-weight:600}
+.pet .mob{border:none;background:radial-gradient(circle at 50% 40%,#e9f4e4,#f4f8f0 72%);
+  padding:12px;display:block;margin:auto;cursor:pointer;border-radius:18px}
+.pet .mob:hover{background:radial-gradient(circle at 50% 40%,#e2f0db,#eef5ea 72%)}
+.pet canvas{image-rendering:pixelated;width:56px;height:56px;display:block}
+.pet .nm{font-size:12.5px;margin-top:6px;font-weight:600}
 .pet .cnt{font-family:ui-monospace,Consolas,monospace;font-size:17px;font-weight:700;color:var(--gold)}
+.pet .cnt.zero{color:#bac6b4;font-weight:600}
 .rarity{display:inline-block;font-size:11px;padding:1px 9px;border-radius:999px;margin-top:4px}
 .r1{background:var(--r1);color:var(--r1t)}.r2{background:var(--r2);color:var(--r2t)}
 .r3{background:var(--r3);color:var(--r3t)}.r4{background:var(--r4);color:var(--r4t)}
@@ -100,6 +104,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .kv>div{background:var(--surface2);border-radius:12px;padding:10px 18px;min-width:120px;flex:1}
 .kv .k{font-size:12px;color:var(--dim)}
 .kv .v{font-family:ui-monospace,Consolas,monospace;font-size:16px;font-weight:600}
+/* ===== 空状态 ===== */
+.empty-box{display:flex;flex-direction:column;align-items:center;gap:6px;padding:26px 10px;text-align:center}
+.empty-box .sub{font-size:13.5px;color:var(--dim)}
+.empty-box canvas{image-rendering:pixelated;width:72px;height:72px;opacity:.9}
 .empty{color:var(--dim);font-size:14px}
 
 /* ===== 表单区 ===== */
@@ -178,7 +186,11 @@ footer{text-align:center;padding:36px 0 44px;color:#a9b6a7;font-size:12px}
     <h2>我的宠物</h2><p>连接钱包后即可查看和培养属于你的史莱姆。</p>
   </div>
   <div class="card">
-    <p class="empty" id="acctNotConnected">连接钱包后开始养成之旅。</p>
+    <div class="empty-box" id="acctNotConnected">
+      <canvas id="emptyCv" width="16" height="16"></canvas>
+      <p class="sub">连接钱包后开始养成之旅，<br>你的史莱姆会出现在这里。</p>
+      <button class="primary" onclick="connect()">连接钱包</button>
+    </div>
     <div id="acctNoAccount" class="hidden">
       <p class="empty" style="margin:0 0 14px">还没有宠物账户，免费创建一个（仅需一次）：</p>
       <button id="btnCreate" class="primary">创建账户</button>
@@ -202,6 +214,7 @@ footer{text-align:center;padding:36px 0 44px;color:#a9b6a7;font-size:12px}
     <div class="info-row">
       <div class="stat"><div class="k">单抽价格</div><div class="v" id="stPrice">—</div></div>
       <div class="stat"><div class="k">剩余额度</div><div class="v" id="stRemain">—</div></div>
+      <div class="stat"><div class="k">我的余额</div><div class="v" id="myBalance">—</div></div>
     </div>
     <div class="row">
       <div class="field"><span>抽取数量</span>
@@ -241,7 +254,7 @@ footer{text-align:center;padding:36px 0 44px;color:#a9b6a7;font-size:12px}
     <div class="note">
       <span>进化路线</span>
       <span class="path">
-        <i>微尘</i><i>砂砾</i><i>方块</i><i>粉迷你</i><i>紫</i><i>熊猫</i><i>蓝</i><i>金</i><i class="final">血 · 满级</i>
+        <i>微尘史莱姆</i><i>砂砾史莱姆</i><i>方块史莱姆</i><i>粉迷你史莱姆</i><i>白史莱姆</i><i>蓝史莱姆</i><i>紫史莱姆</i><i>金史莱姆</i><i class="final">血史莱姆 · 满级</i>
       </span>
     </div>
   </div>
@@ -273,9 +286,9 @@ const PETS=[
   {type:2,file:'sprites/SlimeSquareSmallA.png',name:'砂砾史莱姆',grade:'r2',label:'稀有 · 30%',group:'SlimeSquare',frames:5},
   {type:3,file:'sprites/SlimeSquareA.png',name:'方块史莱姆',grade:'r3',label:'史诗 · 10%',group:'SlimeSquare',frames:5},
   {type:4,file:'sprites/SlimeSmallerA.png',name:'粉迷你史莱姆',grade:'r4',label:'传说 · 8%',group:'SlimeSmaller',frames:14},
-  {type:5,file:'sprites/SlimeSmallA.png',name:'紫史莱姆',grade:'r5',label:'神话 · 2%',group:'SlimeSmall',frames:15},
-  {type:6,file:'sprites/SlimeP.png',name:'熊猫史莱姆',grade:'r5',label:'进阶 I',group:'Slime',frames:16},
-  {type:7,file:'sprites/SlimeC.png',name:'蓝史莱姆',grade:'r5',label:'进阶 II',group:'Slime',frames:16},
+  {type:5,file:'sprites/SlimeP.png',name:'白史莱姆',grade:'r5',label:'神话 · 2%',group:'Slime',frames:16},
+  {type:6,file:'sprites/SlimeC.png',name:'蓝史莱姆',grade:'r5',label:'进阶 I',group:'Slime',frames:16},
+  {type:7,file:'sprites/SlimeSmallA.png',name:'紫史莱姆',grade:'r5',label:'进阶 II',group:'SlimeSmall',frames:15},
   {type:8,file:'sprites/SlimeA.png',name:'金史莱姆',grade:'r5',label:'进阶 III',group:'Slime',frames:16},
   {type:9,file:'sprites/SlimeB.png',name:'血史莱姆',grade:'r5',label:'满级形态',group:'Slime',frames:16}
 ];
@@ -334,12 +347,13 @@ function petCard(pet,extra,where){
   el.innerHTML=`<button class="mob" aria-label="${pet.name}"><canvas width="16" height="16"></canvas></button>
    <div class="nm">${pet.name}</div>
    <div class="rarity ${pet.grade}">${pet.label}</div>
-   ${extra.count!==undefined?`<div class="cnt">${extra.count}</div>`:''}`;
+   ${extra.count!==undefined?`<div class="cnt${extra.count>0?'':' zero'}">${extra.count}</div>`:''}`;
   where.appendChild(el);makeMob(pet,el.querySelector('canvas'));
   return el;
 }
-/* logo / 图鉴 */
+/* logo / 图鉴 / 空状态 */
 makeMob(PETS[4],document.getElementById('logoCv'));
+makeMob(PETS[4],document.getElementById('emptyCv'));
 PETS.forEach(p=>petCard(p,{},document.getElementById('book')));
 
 /* ============ Tab 切换 ============ */
@@ -424,6 +438,14 @@ function updateDrawCost(){
   document.getElementById('drawCost').textContent=fmtBnb(state.price*BigInt(drawQty()));
 }
 
+async function loadBalance(){
+  if(!state.addr)return;
+  try{
+    const bal=await rpc('eth_getBalance',[state.addr,'latest']);
+    document.getElementById('myBalance').textContent=fmtBnb(BigInt(bal));
+  }catch(e){document.getElementById('myBalance').textContent='—'}
+}
+
 async function refreshAccount(){
   const {addr,petAccount}=state;
   document.getElementById('acctNotConnected').classList.add('hidden');
@@ -432,7 +454,7 @@ async function refreshAccount(){
     document.getElementById('acctNoAccount').classList.remove('hidden');
     document.getElementById('acctInfo').classList.add('hidden');
     document.getElementById('btnDraw').disabled=false;document.getElementById('btnDraw').textContent='抽取';
-    document.getElementById('btnSynth').disabled=false;
+    document.getElementById('btnSynth').disabled=false;document.getElementById('btnSynth').textContent='合成';
     return;
   }
   document.getElementById('acctNoAccount').classList.add('hidden');
@@ -450,6 +472,7 @@ async function refreshAccount(){
   for(let i=mobs.length-1;i>=0;i--)if(!mobs[i].ctx.canvas.isConnected)mobs.splice(i,1);
   PETS.forEach((p,i)=>petCard(p,{count:counts[i]},grid));
   document.getElementById('btnDraw').disabled=false;document.getElementById('btnDraw').textContent='抽取';
+  document.getElementById('btnSynth').textContent='合成';
   const canSyn=counts.some((c,i)=>c>=3&&i<8);
   document.getElementById('btnSynth').disabled=!canSyn;
   buildSynthOptions(counts);
@@ -486,12 +509,13 @@ async function connect(){
     if(!await ensureChain())return;
     const accounts=await rpc('eth_requestAccounts');
     state.addr=accounts[0].toLowerCase();
-    document.getElementById('btnWallet').textContent=short(state.addr);
+    document.getElementById('btnWallet').innerHTML='<span class="dot"></span>'+short(state.addr);
     const net=document.getElementById('net');net.textContent='BSC';net.className='net ok';
     state.petAccount=dAddr(await call(enc(SEL.accountOf,padAddr(state.addr))));
     if(state.petAccount===ZERO)state.petAccount=null;
     toast('钱包已连接','ok');
     loadGlobal().catch(()=>{});
+    loadBalance().catch(()=>{});
     refreshAccount().catch(e=>toast(e.message,'err'));
   }catch(e){toast(parseErr(e),'err')}
 }
@@ -518,7 +542,7 @@ document.getElementById('btnDraw').onclick=async()=>{
     const hash=await rpc('eth_sendTransaction',[{from:state.addr,to:SLIME,value:'0x'+price.toString(16).padStart(2,'0'),data:txData}]);
     toast('交易已发送：'+short(hash),'',9000);
     const rc=await waitReceipt(hash);
-    if(rc.status==='0x1'){toast('抽取成功！正在刷新…','ok');await refreshAccount()}
+    if(rc.status==='0x1'){toast('抽取成功！正在刷新…','ok');loadBalance().catch(()=>{});await refreshAccount()}
     else toast('交易未成功，可能是网络价格变动，请重试','err');
   }catch(e){toast(parseErr(e),'err',8000)}
   finally{done()}
