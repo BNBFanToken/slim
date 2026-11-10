@@ -102,7 +102,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   padding:12px 6px 10px;position:relative;transition:.15s}
 .pet:hover{background:#eaf3e6;transform:translateY(-2px)}
 .pet .mob{border:none;background:radial-gradient(circle at 50% 40%,#e9f4e4,#f4f8f0 72%);
-  padding:12px;display:block;margin:auto;cursor:pointer;border-radius:18px}
+  padding:12px;display:block;margin:auto;cursor:pointer;border-radius:18px;height:auto}
 .pet .mob:hover{background:radial-gradient(circle at 50% 40%,#e2f0db,#eef5ea 72%)}
 .pet canvas{image-rendering:pixelated;width:56px;height:56px;display:block}
 .pet .gif{image-rendering:pixelated;width:56px;height:56px;display:block;margin:auto}
@@ -409,9 +409,9 @@ Walk:{d:0.5,t:[0,.0625,.125,.1875,.3125,.375,.4375],f:[1,0,1,2,1,0,1],cue:[['aud
 const mobs=[];
 function pickIdle(){const n=Math.random()*121;return n<100?'Idle0':n<120?'Idle1':'Idle2'}
 function playCue(file){try{const a=new Audio(file);a.playbackRate=1/1.5+Math.random();a.preservesPitch=false;a.volume=.5;a.play().catch(()=>{})}catch(e){}}
-function makeMob(pet,canvas){
+function makeMob(pet,canvas,calm){
   const image=new Image();image.src=pet.file;
-  const m={pet,image,ctx:canvas.getContext('2d'),action:pickIdle(),t:0,cues:new Set()};
+  const m={pet,image,ctx:canvas.getContext('2d'),action:calm?'Idle0':pickIdle(),t:0,cues:new Set()};
   m.ctx.imageSmoothingEnabled=false;mobs.push(m);
   canvas.addEventListener('click',()=>{
     m.action=Math.random()<.5?'Walk':'Attack';m.t=0;m.cues.clear();
@@ -433,14 +433,14 @@ function tick(now){
   requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);
-function petCard(pet,extra,where){
+function petCard(pet,extra,where,calm){
   const el=document.createElement('div');el.className='pet';
   el.innerHTML=`<button class="mob" aria-label="${pet.name}">${pet.group?`<canvas width="16" height="16"></canvas>`:`<img class="gif" src="${pet.file}" alt="${pet.name}">`}</button>
    <div class="nm">${pet.name}</div>
    <div class="rarity ${pet.grade}">${pet.label}</div>
    ${extra.count!==undefined?`<div class="cnt${extra.count>0?'':' zero'}">${extra.count}</div>`:''}`;
   where.appendChild(el);
-  if(pet.group)makeMob(pet,el.querySelector('canvas'));
+  if(pet.group)makeMob(pet,el.querySelector('canvas'),calm);
   return el;
 }
 /* logo / 图鉴 / 空状态 */
@@ -689,13 +689,12 @@ async function showReveal(){
     const amount=w[5];
     const counts=[];for(let i=0;i<5;i++)counts.push(Number(w[7+i]));
     document.getElementById('rvSub').textContent=
-      `第 #${drawId} 次全网抽卡 · ${quantity} 抽 · 第 ${firstDraw}–${firstDraw+quantity-1} 抽 · 花费 ${fmtBnb(amount)}`;
+      `全网第 ${drawId} 次抽卡 · 本次 ${quantity} 抽（第 ${firstDraw}–${firstDraw+quantity-1} 抽）· 花费 ${fmtBnb(amount)}`;
     const grid=document.getElementById('rvGrid');grid.innerHTML='';
     for(let i=mobs.length-1;i>=0;i--)if(!mobs[i].ctx.canvas.isConnected)mobs.splice(i,1);
-    let total=0;
     PETS.slice(0,5).forEach((p,i)=>{
-      if(counts[i]===0)return;total+=counts[i];
-      petCard(p,{count:counts[i]},grid);
+      if(counts[i]===0)return;
+      petCard(p,{count:counts[i]},grid,true);
     });
     document.getElementById('rvGuar').textContent=
       (firstDraw+quantity-1)%10===0?'本次包含保底：第 '+(firstDraw+quantity-1)+' 抽必得神话！'
