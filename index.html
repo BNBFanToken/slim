@@ -97,6 +97,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .pet .nm{font-size:12.5px;margin-top:6px;font-weight:600}
 .pet .cnt{font-family:ui-monospace,Consolas,monospace;font-size:17px;font-weight:700;color:var(--gold)}
 .pet .cnt.zero{color:#bac6b4;font-weight:600}
+/* 合成卡片点选 */
+#synthPick .pet{cursor:pointer}
+#synthPick .pet.off{opacity:.4;cursor:not-allowed}
+#synthPick .pet.picked{background:#e2f0db;outline:3px solid #9fd4a2;outline-offset:-1px}
 .rarity{display:inline-block;font-size:11px;padding:1px 9px;border-radius:999px;margin-top:4px}
 .r1{background:var(--r1);color:var(--r1t)}.r2{background:var(--r2);color:var(--r2t)}
 .r3{background:var(--r3);color:var(--r3t)}.r4{background:var(--r4);color:var(--r4t)}
@@ -215,9 +219,9 @@ footer{text-align:center;padding:36px 0 44px;color:#a9b6a7;font-size:12px}
     <div id="acctNoAccount" class="hidden">
       <p class="empty" style="margin:0 0 8px">还没有宠物账户，免费创建一个（仅需一次）：</p>
       <div class="row" style="margin:0 0 14px">
-        <div class="field"><span>邀请人地址（选填，需已有账户）</span>
-          <input id="inviterAddr" type="text" placeholder="0x…（留空则无邀请人）"
-            style="width:min(100%,340px)" spellcheck="false" autocomplete="off">
+        <div class="field"><span>邀请人地址（必填，需已有账户）</span>
+          <input id="inviterAddr" type="text" placeholder="0x…（邀请人的钱包地址）"
+            style="width:min(100%,340px)" spellcheck="false" autocomplete="off" required>
         </div>
       </div>
       <button id="btnCreate" class="primary">创建账户</button>
@@ -274,19 +278,19 @@ footer{text-align:center;padding:36px 0 44px;color:#a9b6a7;font-size:12px}
 
 <div class="panel" id="panel-synth">
   <div class="panel-head">
-    <h2>合成</h2><p>三只同类合成一只更高阶；神话以上进化还会获得宝藏值。</p>
+    <h2>合成</h2><p>三只同类合成一只更高阶；稀有度越高产出越高，可一路进化到血史莱姆。</p>
   </div>
   <div class="card">
-    <div class="row">
-      <div class="field"><span>材料类型</span>
-        <select id="synthType"></select>
-      </div>
+    <div class="row" style="margin-bottom:14px">
       <div class="field"><span>产出数量</span>
         <input id="synthQty" type="number" min="1" max="100" value="1" inputmode="numeric" style="width:96px">
       </div>
-      <span class="cost">需 <b id="synthNeed">3</b> 只</span>
+      <span class="cost">材料 <b id="synthNeed">3</b> 只</span>
+      <span class="cost">产出 <b id="synthOut">—</b></span>
       <button id="btnSynth" class="primary" disabled>连接钱包后合成</button>
     </div>
+    <p class="empty" style="margin:0 0 10px" id="synthHint">点击选择一种材料史莱姆（需持有 ≥3 只）：</p>
+    <div class="grid" id="synthPick"></div>
     <div class="note">
       <span>进化路线</span>
       <span class="path">
@@ -591,18 +595,34 @@ async function refreshAccount(){
   buildSynthOptions(counts);
   refreshMining().catch(()=>{});
 }
+let synthSel=null;
 function buildSynthOptions(counts){
-  const sel=document.getElementById('synthType');sel.innerHTML='';
+  const grid=document.getElementById('synthPick');grid.innerHTML='';
+  for(let i=mobs.length-1;i>=0;i--)if(!mobs[i].ctx.canvas.isConnected&&!document.getElementById('synthPick').contains(mobs[i].ctx.canvas))mobs.splice(i,1);
+  synthSel=null;
   PETS.slice(0,8).forEach((p,i)=>{
     const c=counts?counts[i]:null;
-    const o=document.createElement('option');o.value=p.type;
-    o.textContent=`${p.name}`+(c!==null?`（持有 ${c}）`:'');
-    sel.appendChild(o);
+    const el=petCard(p,{count:c===null?undefined:c},grid);
+    el.classList.add('pick');
+    if(c!==null&&c<3){el.classList.add('off');el.title='持有不足 3 只'}
+    else el.addEventListener('click',()=>{
+      grid.querySelectorAll('.pet').forEach(x=>x.classList.remove('picked'));
+      el.classList.add('picked');synthSel=p.type;
+      updateSynthNeed();
+      document.getElementById('btnSynth').disabled=false;
+    });
+    if(synthSel===null&&c!==null&&c>=3){el.classList.add('picked');synthSel=p.type}
   });
   updateSynthNeed();
 }
 function updateSynthNeed(){
-  document.getElementById('synthNeed').textContent=3*(+document.getElementById('synthQty').value||1);
+  const q=Math.max(1,Math.min(100,+document.getElementById('synthQty').value||1));
+  document.getElementById('synthNeed').textContent=3*q;
+  const out=document.getElementById('synthOut');
+  if(synthSel===null){out.textContent='—';document.getElementById('btnSynth').disabled=!state.petAccount?false:true;return}
+  const target=PETS.find(p=>p.type===synthSel+1);
+  out.textContent=q+' 只 '+target.name;
+  document.getElementById('btnSynth').disabled=false;
 }
 
 /* ============ 挖矿 ============ */
@@ -736,7 +756,8 @@ document.getElementById('btnDraw').onclick=async()=>{
 document.getElementById('btnSynth').onclick=async()=>{
   if(!state.addr){connect();return}
   if(!state.petAccount){toast('请先创建账户','err');return}
-  const t=+document.getElementById('synthType').value;
+  if(synthSel===null){toast('请先点击选择一种材料史莱姆','err');return}
+  const t=synthSel;
   const q=Math.max(1,Math.min(100,+document.getElementById('synthQty').value||1));
   const btn=document.getElementById('btnSynth');const done=busy(btn,'确认中…');
   try{
@@ -754,14 +775,13 @@ document.getElementById('btnSynth').onclick=async()=>{
 document.getElementById('btnCreate').onclick=async()=>{
   if(!state.addr){connect();return}
   const raw=document.getElementById('inviterAddr').value.trim();
-  let inviter=ZERO;
-  if(raw){
-    if(!/^0x[0-9a-fA-F]{40}$/.test(raw)){toast('邀请人地址格式不正确','err');return}
-    inviter=raw.toLowerCase();
-    if(inviter===state.addr){toast('不能邀请自己','err');return}
-    const invAcct=dAddr(await call(enc(SEL.accountOf,padAddr(inviter))));
-    if(invAcct===ZERO){toast('邀请人还没有宠物账户，无法绑定邀请关系','err');return}
-  }
+  if(!raw){toast('必须填写邀请人地址才能创建账户','err');document.getElementById('inviterAddr').focus();return}
+  let inviter;
+  if(!/^0x[0-9a-fA-F]{40}$/.test(raw)){toast('邀请人地址格式不正确','err');return}
+  inviter=raw.toLowerCase();
+  if(inviter===state.addr){toast('不能邀请自己','err');return}
+  const invAcct=dAddr(await call(enc(SEL.accountOf,padAddr(inviter))));
+  if(invAcct===ZERO){toast('邀请人还没有宠物账户，无法绑定邀请关系','err');return}
   const btn=document.getElementById('btnCreate');const done=busy(btn,'创建中…');
   try{
     const hash=await rpc('eth_sendTransaction',[{from:state.addr,to:SLIME,value:'0x0',data:enc(SEL.createAccount,padAddr(inviter))}]);
